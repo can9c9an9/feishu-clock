@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>时间轴</title>
+<style>
+  body { max-width: 760px; margin: 32px auto; padding: 0 18px; font: 16px system-ui, sans-serif; color: #202124; }
+  h1 { font-size: 26px; }
+  form { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 28px; }
+  input, button { box-sizing: border-box; padding: 10px 12px; font: inherit; }
+  input[type="text"] { flex: 1; min-width: 180px; }
+  .event { display: grid; grid-template-columns: 160px 1fr auto; gap: 14px; padding: 14px 0; border-top: 1px solid #ddd; }
+  time { color: #53636f; }
+  .delete { border: 0; background: transparent; color: #b42318; cursor: pointer; }
+  @media (max-width: 560px) { .event { grid-template-columns: 1fr auto; gap: 6px; } time { grid-column: 1 / -1; } }
+</style>
+
+<h1>时间轴</h1>
+<form id="form">
+  <input id="when" type="datetime-local" required>
+  <input id="what" type="text" placeholder="事件内容" required>
+  <button type="submit">添加</button>
+</form>
+<div id="events"></div>
+
+<script>
+  const storageKey = "my-feishu-timeline";
+  const form = document.querySelector("#form");
+  const when = document.querySelector("#when");
+  const what = document.querySelector("#what");
+  const events = document.querySelector("#events");
+
+  function readEvents() {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); }
+    catch { return []; }
+  }
+
+  function render() {
+    const items = readEvents().sort((a, b) => a.when.localeCompare(b.when));
+    events.replaceChildren();
+
+    for (const item of items) {
+      const row = document.createElement("div");
+      row.className = "event";
+
+      const date = document.createElement("time");
+      date.textContent = new Date(item.when).toLocaleString("zh-CN");
+
+      const text = document.createElement("div");
+      text.textContent = item.what;
+
+      const remove = document.createElement("button");
+      remove.className = "delete";
+      remove.textContent = "删除";
+      remove.setAttribute("aria-label", "删除事件");
+      remove.onclick = () => {
+        localStorage.setItem(storageKey, JSON.stringify(readEvents().filter(x => x.id !== item.id)));
+        render();
+      };
+
+      row.append(date, text, remove);
+      events.append(row);
+    }
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    const items = readEvents();
+    items.push({ id: crypto.randomUUID(), when: when.value, what: what.value.trim() });
+    localStorage.setItem(storageKey, JSON.stringify(items));
+    form.reset();
+    render();
+  });
+
+  render();
+</script>
+</html>
