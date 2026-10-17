@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    font-family: system-ui, sans-serif;
+    color: #202124;
+    background: #fff;
+  }
+  #time { font-size: clamp(40px, 12vw, 88px); font-weight: 600; }
+  #date { margin-top: 8px; color: #666; font-size: 18px; }
+</style>
+<div id="time"></div>
+<div id="date"></div>
+<script>
+  const time = document.querySelector("#time");
+  const date = document.querySelector("#date");
+
+  function update() {
+    const now = new Date();
+    time.textContent = new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Macau",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(now);
+    date.textContent = new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Macau",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long"
+    }).format(now);
+  }
+
+  update();
+  setInterval(update, 1000);
+</script>
+</html>
