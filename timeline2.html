@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f9">
+  <title>事件时间轴</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #263238;
+      --muted: #71808a;
+      --line: #c8d1d8;
+      --surface: #fff;
+      --background: #f4f7f9;
+      --accent: #2776c7;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--background);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-width: 320px; min-height: 100%; margin: 0; }
+    body { min-height: 100vh; overflow: hidden; }
+
+    .page {
+      display: flex;
+      min-height: 100vh;
+      flex-direction: column;
+      padding: clamp(20px, 4vw, 48px) clamp(18px, 5vw, 72px);
+    }
+
+    .heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #dce2e7;
+    }
+
+    h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); font-weight: 680; letter-spacing: 0; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .count { white-space: nowrap; padding: 5px 9px; border-radius: 4px; color: #2366a8; background: #e3effa; font-size: 12px; font-weight: 650; }
+
+    .timeline-scroll {
+      display: grid;
+      flex: 1;
+      align-items: center;
+      width: min(1480px, 100%);
+      min-height: 0;
+      margin: 0 auto;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-color: #b9c5cd transparent;
+      scrollbar-width: thin;
+    }
+
+    .timeline {
+      position: relative;
+      width: 100%;
+      min-width: 100%;
+      height: 360px;
+    }
+
+    .timeline::before {
+      position: absolute;
+      top: 174px;
+      right: 0;
+      left: 0;
+      height: 2px;
+      background: var(--line);
+      content: "";
+    }
+
+    .timeline-item { position: absolute; top: 0; bottom: 0; width: 0; }
+    .event-node {
+      position: absolute;
+      z-index: 1;
+      top: 169px;
+      left: 0;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--background);
+      border-radius: 50%;
+      background: var(--event-color);
+      box-shadow: 0 0 0 1px var(--event-color);
+      transform: translateX(-50%);
+    }
+
+    .event-card {
+      position: absolute;
+      left: 0;
+      width: 190px;
+      min-height: 86px;
+      padding: 13px 14px 12px;
+      border: 1px solid #d8e0e5;
+      border-radius: 6px;
+      background: var(--surface);
+      box-shadow: 0 3px 10px rgba(34, 53, 66, .07);
+      overflow-wrap: anywhere;
+      transform: translateX(-50%);
+    }
+
+    .event-card.top { bottom: 212px; }
+    .event-card.bottom { top: 195px; }
+    .event-card.top::after, .event-card.bottom::before { position: absolute; left: 50%; width: 1px; height: 20px; background: var(--event-color); content: ""; }
+    .event-card.top::after { top: 100%; }
+    .event-card.bottom::before { bottom: 100%; }
+    .event-title { display: block; margin: 0 0 6px; color: #26343d; font-size: 13px; font-weight: 680; line-height: 1.4; }
+    .event-title::before { display: inline-block; width: 6px; height: 6px; margin: 0 7px 2px 0; border-radius: 50%; background: var(--event-color); content: ""; }
+    .event-state, .event-dates { margin: 0; line-height: 1.4; }
+    .event-state { color: #3e4d55; font-size: 12px; }
+    .event-dates { margin-top: 4px; color: #75828a; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .empty { display: grid; min-height: 300px; place-items: center; color: var(--muted); }
+
+    @media (max-width: 700px) {
+      .page { padding: 18px 14px 24px; }
+      .heading { gap: 12px; }
+      .subtitle { font-size: 12px; }
+      .timeline { height: 330px; }
+      .timeline::before { top: 159px; }
+      .event-node { top: 154px; }
+      .event-card.top { bottom: 198px; }
+      .event-card.bottom { top: 180px; }
+      .event-card { width: 168px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="heading">
+      <div>
+        <h1>事件时间轴</h1>
+        <p class="subtitle">赛事与阶段安排</p>
+      </div>
+      <span class="count" id="event-count"></span>
+    </header>
+    <section class="timeline-scroll" aria-label="事件时间轴">
+      <div class="timeline" id="timeline"></div>
+    </section>
+  </main>
+
+  <script>
+    // 数据直接内置在页面中，打开 HTML 时不需要额外上传或选择 JSON 文件。
+    const events = [
+      { id: "585d2cfe-87cc-4e59-8e78-3cd49375700a", title: "裁判系统基础测评", state: "未开始", start: "2026-12-09", end: "2026-12-10" },
+      { id: "6a330142-052a-4304-b215-d105df7acc9a", title: "UL完整形态考核", state: "未开始", start: "2027-01-04", end: "2027-01-06" },
+      { id: "a9d093e9-f5f1-4904-bd28-d58f6d0a49f1", title: "UL联盟赛", state: "未开始", start: "2027-03-15", end: "2027-03-31" },
+      { id: "e71708db-62a5-43fd-8bb8-78dcd378f185", title: "UC赛季规划", state: "未开始", start: "2026-11-18", end: "2026-11-19" },
+      { id: "2060b669-c9cc-4284-b8a5-6add262afc85", title: "UC规则测评", state: "未开始", start: "2026-12-16", end: "2026-12-17" },
+      { id: "02538544-964d-4394-a2f7-51aca39c552a", title: "UC中期进度文档", state: "未开始", start: "2027-01-06", end: "2027-01-07" },
+      { id: "2d3d786d-beab-4a1e-be4a-482ab6d0c9f1", title: "UC完整形态考核", state: "未开始", start: "2027-03-01", end: "2027-03-10" },
+      { id: "99ae4327-f5cd-4d0a-a88a-5fa253843330", title: "UC区域赛", state: "未开始", start: "2027-05-01", end: "2027-05-01" },
+      { id: "eae3e1ba-91a8-4d0d-b7f0-349fc587e0ed", title: "全国总决赛", state: "未开始", start: "2027-07-20", end: "2027-08-01" }
+    ];
+
+    const palette = ["#2877c7", "#c24f54", "#33876d", "#c47a2c", "#765eb1", "#18879a"];
+    const timeline = document.querySelector("#timeline");
+    const count = document.querySelector("#event-count");
+
+    function day(value) {
+      const [year, month, date] = value.split("-").map(Number);
+      return Date.UTC(year, month - 1, date) / 86400000;
+    }
+
+    function shortDate(value) {
+      const [, month, date] = value.split("-");
+      return `${Number(month)}.${Number(date)}`;
+    }
+
+    function render() {
+      const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+      count.textContent = `${sorted.length} 个事件`;
+      timeline.replaceChildren();
+      if (!sorted.length) {
+        timeline.append(Object.assign(document.createElement("p"), { className: "empty", textContent: "暂无事件" }));
+        return;
+      }
+
+      const viewportWidth = timeline.parentElement.clientWidth;
+      const firstDay = day(sorted[0].start);
+      const lastDay = day(sorted[sorted.length - 1].start);
+      const spanDays = Math.max(1, lastDay - firstDay);
+      const scale = Math.min(2.2, Math.max(.8, (viewportWidth - 220) / spanDays));
+      const positions = [];
+      sorted.forEach(item => {
+        const natural = 100 + (day(item.start) - firstDay) * scale;
+        positions.push(positions.length ? Math.max(natural, positions.at(-1) + 215) : natural);
+      });
+      timeline.style.width = `${Math.max(viewportWidth, positions.at(-1) + 110)}px`;
+
+      sorted.forEach((item, index) => {
+        const wrapper = document.createElement("article");
+        wrapper.className = "timeline-item";
+        wrapper.style.left = `${positions[index]}px`;
+        wrapper.style.setProperty("--event-color", palette[index % palette.length]);
+        const card = document.createElement("div");
+        card.className = `event-card ${index % 2 ? "bottom" : "top"}`;
+        card.innerHTML = `<strong class="event-title"></strong><p class="event-state"></p><p class="event-dates"></p>`;
+        card.querySelector(".event-title").textContent = item.title;
+        card.querySelector(".event-state").textContent = item.state;
+        card.querySelector(".event-dates").textContent = `${shortDate(item.start)} - ${shortDate(item.end)}`;
+        const node = document.createElement("span");
+        node.className = "event-node";
+        node.setAttribute("aria-label", `${item.title}时间节点`);
+        wrapper.append(card, node);
+        timeline.append(wrapper);
+      });
+    }
+
+    render();
+    window.addEventListener("resize", render);
+  </script>
+</body>
+</html>
