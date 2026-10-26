@@ -133,13 +133,6 @@
 </head>
 <body>
   <main class="page">
-    <header class="heading">
-      <div>
-        <h1>事件时间轴</h1>
-        <p class="subtitle">赛事与阶段安排</p>
-      </div>
-      <span class="count" id="event-count"></span>
-    </header>
     <section class="timeline-scroll" aria-label="事件时间轴">
       <div class="timeline" id="timeline"></div>
     </section>
@@ -161,7 +154,6 @@
 
     const palette = ["#2877c7", "#c24f54", "#33876d", "#c47a2c", "#765eb1", "#18879a"];
     const timeline = document.querySelector("#timeline");
-    const count = document.querySelector("#event-count");
 
     function day(value) {
       const [year, month, date] = value.split("-").map(Number);
@@ -175,7 +167,6 @@
 
     function render() {
       const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
-      count.textContent = `${sorted.length} 个事件`;
       timeline.replaceChildren();
       if (!sorted.length) {
         timeline.append(Object.assign(document.createElement("p"), { className: "empty", textContent: "暂无事件" }));
