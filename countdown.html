@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f9">
+  <title>事件倒计时</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #263238;
+      --muted: #71808a;
+      --line: #dce3e8;
+      --surface: #fff;
+      --background: #f4f7f9;
+      --blue: #2776c7;
+      --green: #33876d;
+      --gray: #8a969d;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--background);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-width: 320px; min-height: 100%; margin: 0; }
+    body { min-height: 100vh; }
+
+    .page {
+      width: min(1120px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 40px);
+    }
+
+    .events {
+      display: grid;
+      place-items: center;
+      min-height: calc(100vh - 128px);
+    }
+
+    .event {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+      width: min(760px, 100%);
+      min-height: 280px;
+      padding: 36px 28px 42px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .event.next { border-color: #9dc5e5; box-shadow: 0 3px 12px rgba(39, 118, 199, .12); }
+    .event-info { color: #000; text-align: center; }
+    .event-title { margin: 0; color: #000; font-size: clamp(20px, 3vw, 30px); font-weight: 680; overflow-wrap: anywhere; }
+    .event-meta { margin: 10px 0 0; color: #000; font-size: 14px; line-height: 1.45; }
+    .remaining { display: flex; align-items: baseline; justify-content: center; gap: 10px; color: #000; text-align: center; }
+    .remaining-number { display: block; color: #000; font-size: clamp(110px, 26vw, 280px); font-weight: 800; line-height: .86; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+    .remaining-unit { color: #000; font-size: clamp(20px, 3vw, 30px); font-weight: 680; }
+
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="events" id="events" aria-label="事件倒计时列表"></section>
+  </main>
+
+  <script>
+    const timeZone = "Asia/Shanghai";
+    const events = [
+      { title: "裁判系统基础测评", state: "未开始", start: "2026-12-09", end: "2026-12-10" },
+      { title: "UL完整形态考核", state: "未开始", start: "2027-01-04", end: "2027-01-06" },
+      { title: "UL联盟赛", state: "未开始", start: "2027-03-15", end: "2027-03-31" },
+      { title: "UC赛季规划", state: "未开始", start: "2026-11-18", end: "2026-11-19" },
+      { title: "UC规则测评", state: "未开始", start: "2026-12-16", end: "2026-12-17" },
+      { title: "UC中期进度文档", state: "未开始", start: "2027-01-06", end: "2027-01-07" },
+      { title: "UC完整形态考核", state: "未开始", start: "2027-03-01", end: "2027-03-10" },
+      { title: "UC区域赛", state: "未开始", start: "2027-05-01", end: "2027-05-01" },
+      { title: "全国总决赛", state: "未开始", start: "2027-07-20", end: "2027-08-01" }
+    ];
+
+    const eventsContainer = document.querySelector("#events");
+
+    function dateKey(date) {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(date);
+    }
+
+    function dayNumber(value) {
+      const [year, month, day] = value.split("-").map(Number);
+      return Date.UTC(year, month - 1, day) / 86400000;
+    }
+
+    function formatDate(value) {
+      const [year, month, day] = value.split("-");
+      return `${year}年${Number(month)}月${Number(day)}日`;
+    }
+
+    function render() {
+      const today = dateKey(new Date());
+      const todayDay = dayNumber(today);
+      const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+      const current = sorted.find(event => dayNumber(event.start) >= todayDay);
+
+      eventsContainer.replaceChildren();
+      if (!current) {
+        const empty = document.createElement("p");
+        empty.textContent = "所有时间节点已完成";
+        eventsContainer.append(empty);
+        return;
+      }
+
+      [current].forEach(event => {
+        const startDay = dayNumber(event.start);
+        const card = document.createElement("article");
+        const remainingDays = Math.max(0, startDay - todayDay);
+        card.className = "event";
+
+        card.innerHTML = `
+          <div class="event-info">
+            <h2 class="event-title"></h2>
+            <p class="event-meta"></p>
+          </div>
+          <div class="remaining">
+            <span class="remaining-number"></span>
+            <span class="remaining-unit">天</span>
+          </div>`;
+        card.querySelector(".event-title").textContent = event.title;
+        card.querySelector(".event-meta").textContent = `${formatDate(event.start)} - ${formatDate(event.end)}`;
+        card.querySelector(".remaining-number").textContent = remainingDays;
+        eventsContainer.append(card);
+      });
+    }
+
+    render();
+    setInterval(render, 60000);
+  </script>
+</body>
+</html>
